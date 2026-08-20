@@ -1,0 +1,31 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "name": "@forgemeshlabs/gov-transparency-mcp",
+  "description": "Watch the watchers: congressional stock trades, federal contracts, campaign finance, lobbying, and recalls as nine MCP tools over official US government data. Pay per call with x402 USDC on Base.",
+  "maintainers": [
+    "clawdbotworker"
+  ],
+  "build": {
+    "steps": [
+      "npm ci --omit=dev"
+    ],
+    "cmd": [
+      "node",
+      "index.js"
+    ]
+  },
+  "placeholderArguments": {},
+  "tags": [
+    "x402",
+    "usdc",
+    "base",
+    "congress",
+    "stock-act",
+    "campaign-finance",
+    "lobbying",
+    "recalls",
+    "government-data",
+    "mcp",
+    "autonomous-agents"
+  ]
+}
