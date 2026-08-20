@@ -1,0 +1,46 @@
+{
+  "name": "@forgemeshlabs/gov-transparency-mcp",
+  "version": "0.1.0",
+  "description": "Watch the watchers: congressional stock trades, federal contracts, campaign finance, lobbying, and new regulations as nine MCP tools. All official US government data, paid per call with x402 USDC on Base — no account or API key.",
+  "main": "index.js",
+  "bin": {
+    "gov-transparency-mcp": "index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "mcpName": "io.github.forgemeshlabs/gov-transparency-mcp",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "x402",
+    "congress",
+    "stock-act",
+    "congressional-trading",
+    "campaign-finance",
+    "lobbying",
+    "federal-contracts",
+    "government-transparency",
+    "open-data",
+    "usdc",
+    "base"
+  ],
+  "author": "ForgeMesh Labs (https://forgemesh.io)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forgemeshlabs/gov-transparency-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@x402/core": "^2.17.0",
+    "@x402/evm": "^2.17.0",
+    "viem": "^2.0.0"
+  }
+}
