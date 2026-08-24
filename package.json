@@ -1,6 +1,6 @@
 {
   "name": "@forgemeshlabs/gov-transparency-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Watch the watchers: congressional stock trades, federal contracts, campaign finance, lobbying, and new regulations as nine MCP tools. All official US government data, paid per call with x402 USDC on Base — no account or API key.",
   "main": "index.js",
   "bin": {

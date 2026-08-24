@@ -1,5 +1,7 @@
 # gov-transparency-mcp
 
+[![M8ven Score](https://m8ven.ai/badge/mcp/forgemeshlabs-gov-transparency-mcp-s0hroh)](https://m8ven.ai/mcp/forgemeshlabs-gov-transparency-mcp-s0hroh)
+
 **Watch the watchers.** Congressional stock trades, federal contract awards, campaign finance, lobbying filings, and new regulations — nine MCP tools over official US government data, paid per call with [x402](https://x402.org) USDC on Base. No account, no API key, no subscription.
 
 Commercial trackers sell congressional-trading data behind monthly subscriptions. Here it is per-call, in structured JSON, for agents: $0.005–$0.02 a query.

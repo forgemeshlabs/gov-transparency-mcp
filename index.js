@@ -143,6 +143,12 @@ async function getEndpointSpec(args) {
 const TOOLS = [
   {
     name: "get_congress_trades",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.02) — Congressional stock trades parsed from official STOCK Act disclosures: US House member trades with ticker, asset, buy/sell, transaction date, and disclosed amount range. Filter by member name, ticker, trade type (purchase/sale/sale_partial/exchange), state, or date window. Disclosures lag trades by up to 45 days by law. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -160,6 +166,12 @@ const TOOLS = [
   },
   {
     name: "get_trade_filings",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.01) — US House financial-disclosure filing index: who filed periodic transaction reports, annual reports, amendments, and more — filer, district, type, date, and official PDF link. Poll filing_type 'P' to catch fresh trade disclosures early. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -175,6 +187,12 @@ const TOOLS = [
   },
   {
     name: "search_federal_contracts",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.01) — Federal contract awards won by any company: award id, dollar amount, awarding agency, dates, description, and record link, sorted largest first. Optional agency and date-window filters. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -191,6 +209,12 @@ const TOOLS = [
   },
   {
     name: "get_contractor_profile",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.01) — Resolve a company name to its official federal recipient records: legal name, UEI, parent/child level, recent federal award totals, profile link. Use before search_federal_contracts to disambiguate entities. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -204,6 +228,12 @@ const TOOLS = [
   },
   {
     name: "get_candidate_money",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.01) — Campaign finance totals for a US federal candidate: receipts, spending, cash on hand, debts, individual vs PAC split, per recent cycle. Pass a name (fuzzy) or exact candidate_id; optional office preference. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -217,6 +247,12 @@ const TOOLS = [
   },
   {
     name: "find_candidate",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.005) — Search US federal candidates by name: candidate ids, party, office, state, district, and principal campaign committees. The cheap resolver before get_candidate_money. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -229,6 +265,12 @@ const TOOLS = [
   },
   {
     name: "search_lobbying",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.01) — US federal lobbying filings by client company or lobbying firm: reported income, issue areas, specific-issue text, and named lobbyists per filing. Optional year filter. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -242,6 +284,12 @@ const TOOLS = [
   },
   {
     name: "watch_federal_register",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.005) — Newest US regulations and official notices matching a topic: proposed and final rules, executive orders, and notices with agency, date, abstract, and links, newest first. Empty query returns the latest government-wide. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -253,6 +301,12 @@ const TOOLS = [
   },
   {
     name: "lookup_bill",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     description:
       "PAID ($0.005) — Official status of a bill in the US Congress: title, sponsor, latest action, policy area, committees, and counts of actions/cosponsors/amendments. Address by congress number, type (hr, s, hjres, sjres...), and bill number. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
@@ -266,6 +320,12 @@ const TOOLS = [
   },
   {
     name: "get_endpoint_spec",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     description:
       "FREE — no wallet needed. Live call spec for the gov-transparency routes: price, input JSON schema, and worked request/response examples from the service's OpenAPI doc. Call with no arguments to list all nine routes, or pass a path for full detail.",
     inputSchema: {
