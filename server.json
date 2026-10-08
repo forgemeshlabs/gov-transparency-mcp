@@ -6,12 +6,12 @@
     "url": "https://github.com/forgemeshlabs/gov-transparency-mcp",
     "source": "github"
   },
-  "version": "0.1.3",
+  "version": "0.1.4",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@forgemeshlabs/gov-transparency-mcp",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "transport": {
         "type": "stdio"
       }
