@@ -43,7 +43,9 @@ All official, all public domain: US House Clerk financial disclosures (parsed fr
 
 `WALLET_PRIVATE_KEY` must be a **dedicated low-balance wallet** holding a small amount of USDC on Base mainnet — never your primary wallet. `get_endpoint_spec` works without one.
 
-Optional env: `GOV_TRANSPARENCY_BASE_URL` (default `https://x402.forgemesh.io`), `BASE_RPC_URL` (default `https://mainnet.base.org`).
+## Requirements
+
+Node.js 20+ and a dedicated, low-balance Base wallet funded with USDC. The server refuses to sign for any payee other than the two Utility Grid wallets, any network other than Base mainnet, any asset other than USDC, or any amount over the cap ($0.02 per call, $10 per session). The env vars `X402_MAX_PRICE_USD` and `X402_SESSION_BUDGET_USD` can only lower those caps. Requests are same-origin, time out after 60 seconds, are capped at 2 MB, and never follow redirects.
 
 ## How payment works
 

@@ -36,3 +36,14 @@ test("missing wallet key produces a guiding error, not a crash", () => {
     if (saved !== undefined) process.env.WALLET_PRIVATE_KEY = saved;
   }
 });
+
+test("validateArgs rejects bad input and pickArgs drops undeclared keys", () => {
+  const { validateArgs, pickArgs } = require("..");
+  assert.doesNotThrow(() => validateArgs("get_congress_trades", { ticker: "NVDA", since: "2026-01-01", limit: 10 }));
+  assert.throws(() => validateArgs("get_congress_trades", { ticker: "NV DA;" }), /unexpected format/);
+  assert.throws(() => validateArgs("get_congress_trades", { limit: 5000 }), /between/);
+  assert.throws(() => validateArgs("lookup_bill", { type: "../x" }), /one of/);
+  assert.throws(() => validateArgs("search_federal_contracts", {}), /Missing required/);
+  assert.throws(() => validateArgs("get_endpoint_spec", { path: "//evil.com/x" }), /unexpected format/);
+  assert.deepStrictEqual(pickArgs("find_candidate", { candidate: "x", evil: 1 }), { candidate: "x" });
+});

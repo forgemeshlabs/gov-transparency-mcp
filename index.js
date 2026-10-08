@@ -8,12 +8,17 @@ const { x402Client, x402HTTPClient } = require("@x402/core/client");
 const { ExactEvmScheme } = require("@x402/evm/exact/client");
 const { toClientEvmSigner } = require("@x402/evm");
 const { privateKeyToAccount } = require("viem/accounts");
-const { createPublicClient, http } = require("viem");
-const { base } = require("viem/chains");
+const { createGuard } = require("./x402-guard");
 
-const VERSION = "0.1.2";
-const BASE_URL = (process.env.GOV_TRANSPARENCY_BASE_URL || "https://x402.forgemesh.io").replace(/\/$/, "");
-const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://mainnet.base.org";
+const VERSION = require("./package.json").version;
+const BASE_URL = "https://x402.forgemesh.io";
+// Highest listed price is $0.02; the guard refuses to sign for any other payee, network, asset, or higher amount.
+const guard = createGuard({
+  baseUrl: BASE_URL,
+  payTo: ["0x850363a27F0aC6fEb9C7a3eC4C1d295262dF9432", "0x84A1827F1705C257e80771fDc2B152Aea4A57a08"],
+  maxPriceUsd: 0.02,
+  sessionBudgetUsd: 10,
+});
 
 // Every tool maps to one paid route on the ForgeMesh Utility Grid's
 // gov-transparency shelf. All underlying data is official US government
@@ -31,70 +36,12 @@ function buildBaseHttpClient() {
   }
   const pk = key.startsWith("0x") ? key : "0x" + key;
   const account = privateKeyToAccount(pk);
-  const coreClient = new x402Client().register("eip155:*", new ExactEvmScheme(toClientEvmSigner(account)));
+  const coreClient = new x402Client().register("eip155:*", new ExactEvmScheme(toClientEvmSigner(account))).registerPolicy(guard.policy);
   return { httpClient: new x402HTTPClient(coreClient), account };
 }
 
-// x402 derives EIP-3009 validity windows from Date.now; choose a timestamp
-// valid for both Base block time and facilitator wall-clock checks (clock-skew fix).
-async function createChainTimedPaymentPayload(httpClient, paymentRequired) {
-  try {
-    const publicClient = createPublicClient({ chain: base, transport: http(BASE_RPC_URL) });
-    const block = await publicClient.getBlock();
-    const chainNow = Number(block.timestamp);
-    const originalNow = Date.now;
-    const localNow = Math.floor(originalNow() / 1000);
-    const timeout = Number(paymentRequired.accepts?.[0]?.maxTimeoutSeconds || 300);
-    const lowerBound = localNow + 30 - timeout;
-    const upperBound = chainNow + 600;
-    const signingNow = Math.min(Math.max(chainNow, lowerBound), upperBound);
-    Date.now = () => signingNow * 1000;
-    try {
-      return await httpClient.createPaymentPayload(paymentRequired);
-    } finally {
-      Date.now = originalNow;
-    }
-  } catch (_) {
-    return httpClient.createPaymentPayload(paymentRequired);
-  }
-}
-
-async function paidPost(ctx, path, body) {
-  const { httpClient } = ctx;
-  const url = BASE_URL + path;
-  const init = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) };
-  const res = await fetch(url, init);
-
-  if (res.status === 402) {
-    let challengeBody;
-    try {
-      challengeBody = await res.clone().json();
-    } catch (_) {}
-    const paymentRequired = httpClient.getPaymentRequiredResponse((name) => res.headers.get(name), challengeBody);
-    const paymentPayload = await createChainTimedPaymentPayload(httpClient, paymentRequired);
-    const paidRes = await fetch(url, {
-      ...init,
-      headers: { ...init.headers, ...httpClient.encodePaymentSignatureHeader(paymentPayload) },
-    });
-    if (!paidRes.ok) {
-      const errBody = await paidRes.text().catch(() => paidRes.statusText);
-      throw new Error(`HTTP ${paidRes.status}: ${errBody.slice(0, 300)}`);
-    }
-    const data = await paidRes.json();
-    try {
-      const settleResponse = httpClient.getPaymentSettleResponse((name) => paidRes.headers.get(name));
-      if (settleResponse && data && typeof data === "object" && !Array.isArray(data)) {
-        return { ...data, _payment: settleResponse };
-      }
-    } catch (_) {}
-    return data;
-  }
-
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => res.statusText);
-    throw new Error(`HTTP ${res.status}: ${errBody.slice(0, 300)}`);
-  }
-  return res.json();
+function paidPost(ctx, path, body) {
+  return guard.callPaid(ctx.httpClient, path, { method: "POST", body: body || {} });
 }
 
 // --- free discovery ---------------------------------------------------------
@@ -112,9 +59,10 @@ const GOV_PATHS = [
 ];
 
 async function getEndpointSpec(args) {
-  const res = await fetch(`${BASE_URL}/openapi.json`);
+  const res = await guard.fetchBounded(`${BASE_URL}/openapi.json`);
   if (!res.ok) throw new Error(`Failed to fetch discovery doc: HTTP ${res.status}`);
-  const spec = await res.json();
+  let spec;
+  try { spec = JSON.parse(res.text); } catch { throw new Error("Failed to fetch discovery doc: non-JSON response"); }
   let p = String(args.path || "").trim();
   if (p && !p.startsWith("/")) p = "/" + p;
   if (!p) {
@@ -154,13 +102,13 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        member: { type: "string", description: "Member name substring, e.g. 'wittman'" },
-        ticker: { type: "string", description: "Exact ticker, e.g. 'NVDA'" },
+        member: { type: "string", maxLength: 100, description: "Member name substring, e.g. 'wittman'" },
+        ticker: { type: "string", maxLength: 10, pattern: "^[A-Za-z0-9.-]+$", description: "Exact ticker, e.g. 'NVDA'" },
         type: { type: "string", enum: ["purchase", "sale", "sale_partial", "exchange"] },
-        state: { type: "string", description: "State or district prefix, e.g. 'VA' or 'VA01'" },
-        since: { type: "string", description: "ISO date lower bound on transaction date" },
-        until: { type: "string", description: "ISO date upper bound on transaction date" },
-        limit: { type: "integer", description: "Max rows (default 25, max 100)" },
+        state: { type: "string", maxLength: 8, pattern: "^[A-Za-z0-9]+$", description: "State or district prefix, e.g. 'VA' or 'VA01'" },
+        since: { type: "string", maxLength: 32, pattern: "^\\d{4}-\\d{2}-\\d{2}([T ][0-9:.Z+-]{1,20})?$", description: "ISO date lower bound on transaction date" },
+        until: { type: "string", maxLength: 32, pattern: "^\\d{4}-\\d{2}-\\d{2}([T ][0-9:.Z+-]{1,20})?$", description: "ISO date upper bound on transaction date" },
+        limit: { type: "integer", minimum: 1, maximum: 100, description: "Max rows (default 25, max 100)" },
       },
     },
   },
@@ -177,11 +125,11 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        member: { type: "string", description: "Member name substring" },
-        state: { type: "string", description: "State or district prefix" },
-        filing_type: { type: "string", description: "Filing type code, e.g. 'P' for trade reports" },
-        year: { type: "integer", description: "Filing year, e.g. 2026" },
-        limit: { type: "integer", description: "Max rows (default 25, max 100)" },
+        member: { type: "string", maxLength: 100, description: "Member name substring" },
+        state: { type: "string", maxLength: 8, pattern: "^[A-Za-z0-9]+$", description: "State or district prefix" },
+        filing_type: { type: "string", maxLength: 3, pattern: "^[A-Za-z]+$", description: "Filing type code, e.g. 'P' for trade reports" },
+        year: { type: "integer", minimum: 1990, maximum: 2100, description: "Filing year, e.g. 2026" },
+        limit: { type: "integer", minimum: 1, maximum: 100, description: "Max rows (default 25, max 100)" },
       },
     },
   },
@@ -198,11 +146,11 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        recipient: { type: "string", description: "Company name, min 3 chars (required)" },
-        agency: { type: "string", description: "Awarding top-tier agency, e.g. 'Department of Defense'" },
-        since: { type: "string", description: "ISO start date (default: 2 years back)" },
-        until: { type: "string", description: "ISO end date (default: today)" },
-        limit: { type: "integer", description: "Max awards (default 10, max 50)" },
+        recipient: { type: "string", maxLength: 200, description: "Company name, min 3 chars (required)" },
+        agency: { type: "string", maxLength: 200, description: "Awarding top-tier agency, e.g. 'Department of Defense'" },
+        since: { type: "string", maxLength: 32, pattern: "^\\d{4}-\\d{2}-\\d{2}([T ][0-9:.Z+-]{1,20})?$", description: "ISO start date (default: 2 years back)" },
+        until: { type: "string", maxLength: 32, pattern: "^\\d{4}-\\d{2}-\\d{2}([T ][0-9:.Z+-]{1,20})?$", description: "ISO end date (default: today)" },
+        limit: { type: "integer", minimum: 1, maximum: 50, description: "Max awards (default 10, max 50)" },
       },
       required: ["recipient"],
     },
@@ -220,8 +168,8 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        company: { type: "string", description: "Company name, min 3 chars (required)" },
-        limit: { type: "integer", description: "Max entities (default 5, max 20)" },
+        company: { type: "string", maxLength: 200, description: "Company name, min 3 chars (required)" },
+        limit: { type: "integer", minimum: 1, maximum: 20, description: "Max entities (default 5, max 20)" },
       },
       required: ["company"],
     },
@@ -239,8 +187,8 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        candidate: { type: "string", description: "Candidate name, min 3 chars" },
-        candidate_id: { type: "string", description: "Exact FEC candidate id (alternative to name)" },
+        candidate: { type: "string", maxLength: 200, description: "Candidate name, min 3 chars" },
+        candidate_id: { type: "string", maxLength: 20, pattern: "^[A-Za-z0-9]+$", description: "Exact FEC candidate id (alternative to name)" },
         office: { type: "string", enum: ["president", "senate", "house"] },
       },
     },
@@ -258,7 +206,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        candidate: { type: "string", description: "Candidate name, min 3 chars (required)" },
+        candidate: { type: "string", maxLength: 200, description: "Candidate name, min 3 chars (required)" },
       },
       required: ["candidate"],
     },
@@ -276,9 +224,9 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        client: { type: "string", description: "Client organization name, e.g. 'coinbase'" },
-        registrant: { type: "string", description: "Lobbying firm name" },
-        year: { type: "string", description: "Filing year, e.g. '2025'" },
+        client: { type: "string", maxLength: 200, description: "Client organization name, e.g. 'coinbase'" },
+        registrant: { type: "string", maxLength: 200, description: "Lobbying firm name" },
+        year: { type: "string", maxLength: 4, pattern: "^\\d{4}$", description: "Filing year, e.g. '2025'" },
       },
     },
   },
@@ -295,7 +243,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        q: { type: "string", description: "Search term, e.g. 'stablecoin'" },
+        q: { type: "string", maxLength: 200, description: "Search term, e.g. 'stablecoin'" },
       },
     },
   },
@@ -312,9 +260,9 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        congress: { type: "string", description: "Congress number, e.g. '119'" },
-        type: { type: "string", description: "Bill type: hr, s, hjres, sjres, hconres, sconres, hres, sres" },
-        number: { type: "string", description: "Bill number, e.g. '1'" },
+        congress: { type: "string", maxLength: 3, pattern: "^\\d{1,3}$", description: "Congress number, e.g. '119'" },
+        type: { type: "string", enum: ["hr", "s", "hjres", "sjres", "hconres", "sconres", "hres", "sres"], description: "Bill type: hr, s, hjres, sjres, hconres, sconres, hres, sres" },
+        number: { type: "string", maxLength: 6, pattern: "^\\d{1,6}$", description: "Bill number, e.g. '1'" },
       },
     },
   },
@@ -331,7 +279,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Route path, e.g. 'congress-stock-trades'" },
+        path: { type: "string", maxLength: 100, pattern: "^/?[A-Za-z0-9._-]+$", description: "Route path, e.g. 'congress-stock-trades'" },
       },
     },
   },
@@ -349,6 +297,32 @@ const TOOL_ROUTES = {
   lookup_bill: "/congress-bill-lookup",
 };
 
+// Validate arguments against the tool's own inputSchema before any network call or payment.
+function validateArgs(name, args) {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) throw new Error(`Unknown tool: ${name}`);
+  if (args === null || typeof args !== "object" || Array.isArray(args)) throw new Error("arguments must be an object");
+  for (const key of tool.inputSchema.required || []) if (args[key] === undefined) throw new Error(`Missing required argument: ${key}`);
+  for (const [key, spec] of Object.entries(tool.inputSchema.properties)) {
+    const v = args[key];
+    if (v === undefined) continue;
+    if (spec.type === "string") {
+      if (typeof v !== "string" || v.length > (spec.maxLength || 2000)) throw new Error(`Invalid ${key}: expected string up to ${spec.maxLength || 2000} chars`);
+      if (spec.enum && !spec.enum.includes(v)) throw new Error(`Invalid ${key}: must be one of ${spec.enum.join(", ")}`);
+      if (spec.pattern && !new RegExp(spec.pattern).test(v)) throw new Error(`Invalid ${key}: unexpected format`);
+    } else if (spec.type === "integer") {
+      if (!Number.isInteger(v)) throw new Error(`Invalid ${key}: expected integer`);
+      if (v < spec.minimum || v > spec.maximum) throw new Error(`Invalid ${key}: must be between ${spec.minimum} and ${spec.maximum}`);
+    }
+  }
+}
+
+// Forward only the arguments the tool declares.
+function pickArgs(name, args) {
+  const tool = TOOLS.find((t) => t.name === name);
+  return Object.fromEntries(Object.entries(args).filter(([k]) => k in tool.inputSchema.properties));
+}
+
 async function main() {
   let ctxPromise;
   async function getPaymentContext() {
@@ -363,11 +337,12 @@ async function main() {
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const { name, arguments: args = {} } = req.params;
     try {
+      validateArgs(name, args);
       let data;
       if (name === "get_endpoint_spec") {
         data = await getEndpointSpec(args);
       } else if (TOOL_ROUTES[name]) {
-        data = await paidPost(await getPaymentContext(), TOOL_ROUTES[name], args);
+        data = await paidPost(await getPaymentContext(), TOOL_ROUTES[name], pickArgs(name, args));
       } else {
         throw new Error(`Unknown tool: ${name}`);
       }
@@ -379,7 +354,7 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`gov-transparency-mcp v${VERSION} ready — ${BASE_URL}`);
+  console.error(`gov-transparency-mcp v${VERSION} ready`);
 }
 
 if (require.main === module) {
@@ -389,4 +364,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { TOOLS, TOOL_ROUTES, getEndpointSpec, buildBaseHttpClient };
+module.exports = { TOOLS, TOOL_ROUTES, validateArgs, pickArgs, getEndpointSpec, buildBaseHttpClient };

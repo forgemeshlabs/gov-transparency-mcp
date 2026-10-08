@@ -8,6 +8,7 @@
   },
   "files": [
     "index.js",
+    "x402-guard.js",
     "README.md",
     "LICENSE"
   ],
@@ -38,7 +39,7 @@
     "url": "git+https://github.com/forgemeshlabs/gov-transparency-mcp.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@x402/core": "^2.17.0",
     "@x402/evm": "^2.17.0",
     "viem": "^2.0.0"
