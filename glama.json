@@ -27,5 +27,6 @@
     "government-data",
     "mcp",
     "autonomous-agents"
-  ]
+  ],
+  "version": "0.1.5"
 }
