@@ -98,7 +98,7 @@ const TOOLS = [
       openWorldHint: true,
     },
     description:
-      "PAID ($0.02) — Congressional stock trades parsed from official STOCK Act disclosures: US House member trades with ticker, asset, buy/sell, transaction date, and disclosed amount range. Filter by member name, ticker, trade type (purchase/sale/sale_partial/exchange), state, or date window. Disclosures lag trades by up to 45 days by law. Requires WALLET_PRIVATE_KEY.",
+      "PAID ($0.02) — Congress stock trades from official STOCK Act disclosures: US House member trades with ticker, asset, buy/sell, transaction date, and disclosed amount range. Filter by member name, ticker, trade type (purchase/sale/sale_partial/exchange), state, or date window. Disclosures lag trades by up to 45 days by law. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
       type: "object",
       properties: {
@@ -142,7 +142,7 @@ const TOOLS = [
       openWorldHint: true,
     },
     description:
-      "PAID ($0.01) — Federal contract awards won by any company: award id, dollar amount, awarding agency, dates, description, and record link, sorted largest first. Optional agency and date-window filters. Requires WALLET_PRIVATE_KEY.",
+      "PAID ($0.01) — Federal contracts search: US government contract awards won by a company: award id, dollar amount, awarding agency, dates, description, and record link, sorted largest first. Optional agency and date-window filters. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
       type: "object",
       properties: {
@@ -220,7 +220,7 @@ const TOOLS = [
       openWorldHint: true,
     },
     description:
-      "PAID ($0.01) — US federal lobbying filings by client company or lobbying firm: reported income, issue areas, specific-issue text, and named lobbyists per filing. Optional year filter. Requires WALLET_PRIVATE_KEY.",
+      "PAID ($0.01) — Lobbying filings: US federal lobbying disclosures by client company or lobbying firm: reported income, issue areas, specific-issue text, and named lobbyists per filing. Optional year filter. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
       type: "object",
       properties: {
