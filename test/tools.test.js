@@ -47,3 +47,21 @@ test("validateArgs rejects bad input and pickArgs drops undeclared keys", () => 
   assert.throws(() => validateArgs("get_endpoint_spec", { path: "//evil.com/x" }), /unexpected format/);
   assert.deepStrictEqual(pickArgs("find_candidate", { candidate: "x", evil: 1 }), { candidate: "x" });
 });
+
+test("guard keeps the service refusal: status, charged flag and upstream body", async () => {
+  const { createGuard } = require("../x402-guard");
+  const guard = createGuard({ baseUrl: "https://x402.forgemesh.io", payTo: [] });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: "bad_request", detail: "recipient too short" }), { status: 400, headers: { "content-type": "application/json" } });
+  try {
+    await assert.rejects(guard.callPaid({}, "/federal-contracts-search", { method: "POST", body: { recipient: "ab" } }), (e) => {
+      assert.strictEqual(e.status, 400);
+      assert.strictEqual(e.charged, false);
+      assert.strictEqual(e.upstream.detail, "recipient too short");
+      assert.match(e.message, /recipient too short/);
+      return true;
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

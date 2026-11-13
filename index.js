@@ -98,7 +98,7 @@ const TOOLS = [
       openWorldHint: true,
     },
     description:
-      "PAID ($0.02) — Congress stock trades from official STOCK Act disclosures: US House member trades with ticker, asset, buy/sell, transaction date, and disclosed amount range. Filter by member name, ticker, trade type (purchase/sale/sale_partial/exchange), state, or date window. Disclosures lag trades by up to 45 days by law. Requires WALLET_PRIVATE_KEY.",
+      "PAID ($0.02) — Congress stock trades from official STOCK Act disclosures: US House member trades with ticker, asset, buy/sell, transaction date, and disclosed amount range. Filter by member name, ticker, trade type (purchase/sale/sale_partial/exchange), state, or date window. House only, no Senate; disclosures lag trades by up to 45 days by law. Requires WALLET_PRIVATE_KEY.",
     inputSchema: {
       type: "object",
       properties: {

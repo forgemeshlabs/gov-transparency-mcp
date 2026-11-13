@@ -99,6 +99,19 @@ function createGuard(opts) {
     }
   }
 
+  // Keep the service's refusal intact: HTTP status, body (JSON when parseable) and the charged flag.
+  function httpError(res, prefix, charged) {
+    let upstream;
+    try { upstream = JSON.parse(res.text); } catch { upstream = res.text.slice(0, 500); }
+    const body = typeof upstream === "string" ? upstream : JSON.stringify(upstream).slice(0, 1500);
+    const err = new Error(`${prefix}HTTP ${res.status}: ${body}`);
+    err.status = res.status;
+    err.upstream = upstream;
+    if (charged !== undefined) err.charged = charged;
+    else if (upstream && typeof upstream === "object" && typeof upstream.charged === "boolean") err.charged = upstream.charged;
+    return err;
+  }
+
   function parseJson(res) {
     try { return JSON.parse(res.text); } catch { throw new Error(`HTTP ${res.status}: non-JSON response`); }
   }
@@ -111,7 +124,7 @@ function createGuard(opts) {
     const init = { method, headers: { ...headers, ...(body ? { "content-type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) };
     const res = await fetchBounded(url, init);
     if (res.status !== 402) {
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.text.slice(0, 200)}`);
+      if (!res.ok) throw httpError(res, "", false); // nothing was signed, so nothing was charged
       return parseJson(res);
     }
     let challenge;
@@ -119,7 +132,7 @@ function createGuard(opts) {
     const paymentRequired = httpClient.getPaymentRequiredResponse((n) => res.headers.get(n), challenge);
     const payload = await httpClient.createPaymentPayload(paymentRequired); // policy runs (and reserves budget) inside
     const paid = await fetchBounded(url, { ...init, headers: { ...init.headers, ...httpClient.encodePaymentSignatureHeader(payload) } });
-    if (!paid.ok) throw new Error(`Payment failed — HTTP ${paid.status}: ${paid.text.slice(0, 200)}`);
+    if (!paid.ok) throw httpError(paid, "Payment failed — ");
     let settle = null;
     try { settle = httpClient.getPaymentSettleResponse((n) => paid.headers.get(n)) || null; } catch { settle = null; }
     const contentType = paid.headers.get("content-type") || "";
