@@ -348,6 +348,10 @@ async function main() {
       }
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     } catch (e) {
+      if (e && e.status !== undefined) {
+        // Service refusal: structured data, the upstream body is untrusted and never interpolated into prose.
+        return { content: [{ type: "text", text: JSON.stringify({ error: e.message, status: e.status, charged: e.charged, upstream: e.upstream, untrusted: true }, null, 2) }], isError: true };
+      }
       return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
     }
   });

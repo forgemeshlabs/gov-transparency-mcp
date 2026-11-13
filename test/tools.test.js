@@ -58,7 +58,7 @@ test("guard keeps the service refusal: status, charged flag and upstream body", 
       assert.strictEqual(e.status, 400);
       assert.strictEqual(e.charged, false);
       assert.strictEqual(e.upstream.detail, "recipient too short");
-      assert.match(e.message, /recipient too short/);
+      assert.strictEqual(e.message, "HTTP 400 (bad_request)");
       return true;
     });
   } finally {

@@ -99,12 +99,17 @@ function createGuard(opts) {
     }
   }
 
-  // Keep the service's refusal intact: HTTP status, body (JSON when parseable) and the charged flag.
+  // Keep the service's refusal as data, never as prose: the message is fixed (status plus a short error
+  // code if the service sent one); the parsed body is carried in err.upstream, capped at 1500 chars.
   function httpError(res, prefix, charged) {
     let upstream;
-    try { upstream = JSON.parse(res.text); } catch { upstream = res.text.slice(0, 500); }
-    const body = typeof upstream === "string" ? upstream : JSON.stringify(upstream).slice(0, 1500);
-    const err = new Error(`${prefix}HTTP ${res.status}: ${body}`);
+    try { upstream = JSON.parse(res.text); } catch { upstream = res.text.slice(0, 1500); }
+    if (upstream && typeof upstream === "object") {
+      const json = JSON.stringify(upstream);
+      if (json.length > 1500) upstream = json.slice(0, 1500);
+    }
+    const code = upstream && typeof upstream === "object" && typeof upstream.error === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(upstream.error) ? upstream.error : null;
+    const err = new Error(`${prefix}HTTP ${res.status}${code ? ` (${code})` : ""}`);
     err.status = res.status;
     err.upstream = upstream;
     if (charged !== undefined) err.charged = charged;
